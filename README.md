@@ -9,6 +9,10 @@ How to answer that question:
 
     Are we there yet? no, but close. https://www.r13y.com
 
+    The last two outstanding issues are being worked on:
+      - https://github.com/NixOS/nixpkgs/pull/107965
+      - https://github.com/NixOS/nixpkgs/pull/112928
+
   - [x] Get a PE/COFF checksum of the built image
     ![checksum](doc/images/checksum.png)
 
