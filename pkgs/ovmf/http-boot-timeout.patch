@@ -1,0 +1,28 @@
+diff --git a/NetworkPkg/HttpBootDxe/HttpBootClient.h b/NetworkPkg/HttpBootDxe/HttpBootClient.h
+index 971b2dc800..85301c86d1 100644
+--- a/NetworkPkg/HttpBootDxe/HttpBootClient.h
++++ b/NetworkPkg/HttpBootDxe/HttpBootClient.h
+@@ -10,8 +10,8 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
+ #ifndef __EFI_HTTP_BOOT_HTTP_H__
+ #define __EFI_HTTP_BOOT_HTTP_H__
+ 
+-#define HTTP_BOOT_REQUEST_TIMEOUT            5000      // 5 seconds in uints of millisecond.
+-#define HTTP_BOOT_RESPONSE_TIMEOUT           5000      // 5 seconds in uints of millisecond.
++#define HTTP_BOOT_REQUEST_TIMEOUT            600000      // 5 seconds in uints of millisecond.
++#define HTTP_BOOT_RESPONSE_TIMEOUT           600000      // 5 seconds in uints of millisecond.
+ #define HTTP_BOOT_BLOCK_SIZE                 1500
+ 
+ 
+diff --git a/NetworkPkg/HttpDxe/HttpProto.h b/NetworkPkg/HttpDxe/HttpProto.h
+index 00ba26aca4..031aaa9397 100644
+--- a/NetworkPkg/HttpDxe/HttpProto.h
++++ b/NetworkPkg/HttpDxe/HttpProto.h
+@@ -41,7 +41,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
+ #define HTTP_BUFFER_SIZE_DEAULT      65535
+ #define HTTP_MAX_SYN_BACK_LOG        5
+ #define HTTP_CONNECTION_TIMEOUT      60
+-#define HTTP_RESPONSE_TIMEOUT        5
++#define HTTP_RESPONSE_TIMEOUT        600
+ #define HTTP_DATA_RETRIES            12
+ #define HTTP_FIN_TIMEOUT             2
+ #define HTTP_KEEP_ALIVE_PROBES       6

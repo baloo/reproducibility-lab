@@ -1,0 +1,15 @@
+<network xmlns:dnsmasq='http://libvirt.org/schemas/network/dnsmasq/1.0'>
+  <name>netboot</name>
+  <uuid>356e5daf-3b06-49d5-98fd-178e847cf560</uuid>
+  <forward mode='nat'/>
+  <bridge name='virbr2' stp="off"/>
+  <ip address='192.168.123.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.123.2' end='192.168.123.254'/>
+      <bootp file='http://192.168.123.1:8000/image'/>
+    </dhcp>
+  </ip>
+  <dnsmasq:options>
+    <dnsmasq:option value="dhcp-option=vendor:HTTPClient,60,HTTPClient"/>
+  </dnsmasq:options>
+</network>
