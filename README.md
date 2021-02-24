@@ -6,16 +6,25 @@ What you'll find here is a prototype of a usecase for build-reproducibility. Thi
 
 How to answer that question:
   - [ ] Get your build reproducible.
+
     Are we there yet? no, but close. https://www.r13y.com
+
+  - [x] Get a PE/COFF checksum of the built image
+    ![checksum](doc/images/checksum.png)
+
   - [x] Boot a linux image that will be hashed by a TPM.
-  - [ ] tExtract the TPM eventlog to get the different element that were involved in building the PCR[4]
-  - [ ] Get an attestion of the current state of the system using a remote attestation protocol:
+
+  - [ ] Extract the TPM eventlog to get the different element that were involved in building the PCR[4]
+    ![eventlog](doc/images/eventlog.png)
+
+  - [ ] Get an attestion of the current state (most importantly here, the PCR[4]) of the system using a remote attestation protocol:
     https://safeboot.dev/attestation/#attestation-protocol
 
 From that point, you should be able to:
   - Take the source of the build tree.
   - Rebuild it, and, given the same parameters, get the same checksum for the target image.
   - Get a copy of the event log, rebuild the PCR[4] from this eventlog.
+  - Compare the last element of PCR[4] to your PE checksum (from your build)
   - Get an attestion, crossed signed to the TPM manufacturer root key.
 
 ## Lab requirements
