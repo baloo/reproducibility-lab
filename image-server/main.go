@@ -28,7 +28,12 @@ func (h *handler) buildDerivation() string {
 
 // EDK2 UEFI does not negociate gzip :(
 // This function is useless for now
+// 
+// Feeds gzip garbage data (deflate to empty bytestring), until an image is built
 func (h *handler) ServeHTTPGzip(w http.ResponseWriter, r *http.Request) {
+        // There are 2 http spec violation here:
+        //  - The content-encoding should be negociated by the client
+        //  - Transfer-Encoding chunked is only available on http/1.1 
 	f := w.(http.Flusher)
 
 	w.Header().Add("Transfer-Encoding", "chunked")
