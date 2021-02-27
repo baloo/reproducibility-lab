@@ -1,8 +1,8 @@
+use sha2::{Digest as Sha2Digest, Sha256};
 use std::env;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use sha2::{Digest as Sha2Digest, Sha256};
 
 use nom::{
     bytes::complete::take,
@@ -32,7 +32,7 @@ enum EventType {
     NonhostConfig,
     NonhostInfo,
     OmitBootDeviceEvents,
-    
+
     EFIVariableDriverConfig,
     EFIVariableBoot,
     EFIBootServicesApplication,
@@ -104,11 +104,11 @@ impl Digest {
             (i, 0x04) => {
                 let (i, data) = take(20usize)(i)?;
                 (i, Sha1(data.to_vec()))
-            },
+            }
             (i, 0x0b) => {
                 let (i, data) = take(32usize)(i)?;
                 (i, Sha256(data.to_vec()))
-            },
+            }
             _ => return Err(nom::Err::Failure((i, ErrorKind::Tag))),
         };
 
@@ -141,13 +141,16 @@ impl Event {
         let (i, event_size) = le_u32(rest)?;
         let (i, event_data) = take(event_size as usize)(i)?;
 
-        Ok((i, Event {
-            num,
-            pcr_index,
-            event_type,
-            digests,
-            event_data: event_data.to_vec(),
-        }))
+        Ok((
+            i,
+            Event {
+                num,
+                pcr_index,
+                event_type,
+                digests,
+                event_data: event_data.to_vec(),
+            },
+        ))
     }
 
     fn read_sha1_log(i: &[u8], num: usize) -> IResult<&[u8], Event> {
@@ -156,29 +159,32 @@ impl Event {
 
         let (i, data) = take(20usize)(i)?;
         let digests = vec![Digest::Sha1(data.to_vec())];
-        
+
         let (i, event_size) = le_u32(i)?;
         let (i, event_data) = take(event_size as usize)(i)?;
 
-        Ok((i, Event {
-            num,
-            pcr_index,
-            event_type,
-            digests,
-            event_data: event_data.to_vec(),
-        }))
+        Ok((
+            i,
+            Event {
+                num,
+                pcr_index,
+                event_type,
+                digests,
+                event_data: event_data.to_vec(),
+            },
+        ))
     }
 }
 
 fn parse_log<P: AsRef<Path>>(filename: P) -> Vec<Event> {
-    let contents = fs::read(filename)
-        .expect("Something went wrong reading the file");
+    let contents = fs::read(filename).expect("Something went wrong reading the file");
 
     let mut indexes = 0..;
 
     let mut contents = &contents[..];
     let mut out = Vec::new();
-    let (rest, first_event) = Event::read_sha1_log(contents, indexes.next().unwrap()).expect("parse first element");
+    let (rest, first_event) =
+        Event::read_sha1_log(contents, indexes.next().unwrap()).expect("parse first element");
     contents = &rest[..];
     let agile_log = first_event.event_type == EventType::NoAction;
     out.push(first_event);
@@ -191,14 +197,14 @@ fn parse_log<P: AsRef<Path>>(filename: P) -> Vec<Event> {
         }
     } else {
         while contents.len() > 0 {
-            let (rest, value) = Event::read_sha1_log(contents, indexes.next().unwrap()).expect("parse data");
+            let (rest, value) =
+                Event::read_sha1_log(contents, indexes.next().unwrap()).expect("parse data");
             out.push(value);
             contents = rest;
         }
     }
     out
 }
-
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -208,19 +214,31 @@ fn main() {
     let mut hasher = Sha256::new();
     let mut value = [0u8; 32];
 
-    for i in out.iter().filter(|e| e.pcr_index == 4 && e.event_type != EventType::NoAction) {
-        println!("pcr[4] += {:?}", i);
-        hasher.write(&value[..]);
+    for i in out
+        .iter()
+        .filter(|e| e.pcr_index == 4 && e.event_type != EventType::NoAction)
+    {
+        if i.event_type == EventType::EFIBootServicesApplication && i.num == 32 {
+            for h in i.digests.iter() {
+                match h {
+                    Digest::Sha256(ref v) => {
+                        println!("image checksum: {:02x?}", &v[..]);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        hasher.write(&value[..]).expect("unable to write hash");
         for h in i.digests.iter() {
             match h {
                 Digest::Sha256(ref v) => {
                     hasher.write(&v[..]).expect("unable to write hash");
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
         let new_pcr = hasher.finalize_reset();
         value.copy_from_slice(&new_pcr[..]);
-        println!("newpcr == {:x?}", &value[..]);
     }
+    println!("expected pcr[4]: {:02x?}", &value[..]);
 }
