@@ -157,15 +157,15 @@ in
       ${swtpm'}/bin/swtpm_setup \
         --tpm2 \
         --tpmstate ${swtpm_datastore} \
-        --createek --allow-signing --decryption --create-ek-cert \
+        --createek --decryption --create-ek-cert \
         --create-platform-cert \
         --display
       ${swtpm'}/bin/swtpm socket \
         --tpm2 \
-        --tpmstate dir=target/data \
+        --tpmstate dir=${swtpm_datastore} \
         -p 2321 --ctrl type=tcp,port=2322 \
         --log fd=1,level=5 \
-        --flags startup-clear
+        --flags not-need-init,startup-clear
     '';
   in stdenv.mkDerivation {
     name = "rust";
@@ -184,5 +184,9 @@ in
       openssl
     ];
     LIBCLANG_PATH = "${llvmPackages.clang-unwrapped.lib}/lib";
+    PROTOBUF_LOCATION = protobuf.out;
+    PROTOC = "${protobuf.out}/bin/protoc";
+    PROTOC_INCLUDE = "${protobuf.out}/include";
+    ROOT_CA = cert;
   }
 

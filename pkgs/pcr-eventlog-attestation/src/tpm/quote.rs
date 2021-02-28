@@ -1,12 +1,14 @@
 // https://trustedcomputinggroup.org/wp-content/uploads/TCG_TPM2_r1p59_Part2_Structures_pub.pdf
 
+use std::io::Write;
+
 use nom::{
     bytes::complete::{tag, take},
     error::{make_error, ErrorKind},
-    number::complete::le_u64,
     number::complete::{be_u16, be_u32, be_u64, be_u8},
     IResult,
 };
+use sha2::{Digest as Sha2Digest, Sha256};
 
 const TPM_GENERATED_MAGIC: &[u8] = &[0xff, 0x54, 0x43, 0x47]; // 0xFF TCG
                                                               // 6.9 TPM_ST (Structure Tags)
@@ -53,7 +55,7 @@ impl YesNo {
 
 // 10.11.1 TPMS_CLOCK_INFO
 #[derive(Debug)]
-struct ClockInfo {
+pub struct ClockInfo {
     clock: u64,
     reset_count: u32,
     restart_count: u32,
@@ -118,7 +120,7 @@ impl Digest {
 
 // 10.12.4 TPMS_QUOTE_INFO
 #[derive(Debug)]
-struct QuoteInfo {
+pub struct QuoteInfo {
     select: Vec<PCRSelection>,
     digest: Vec<u8>,
 }
@@ -135,17 +137,17 @@ impl QuoteInfo {
 
 // 10.12.12 TPMS_ATTEST
 #[derive(Debug)]
-struct Quoted {
-    qualified_signer: Vec<u8>,
-    extra_data: Vec<u8>,
-    clock_info: ClockInfo,
-    firmware_version: u64,
-    attested: QuoteInfo,
+pub struct Quote {
+    pub qualified_signer: Vec<u8>,
+    pub extra_data: Vec<u8>,
+    pub clock_info: ClockInfo,
+    pub firmware_version: u64,
+    pub attested: QuoteInfo,
 }
 
-impl Quoted {
-    pub fn read(input: &[u8]) -> Result<Quoted, ()> {
-        fn read_(i: &[u8]) -> IResult<&[u8], Quoted> {
+impl Quote {
+    pub fn read(input: &[u8]) -> Result<Self, ()> {
+        fn read_(i: &[u8]) -> IResult<&[u8], Quote> {
             let (i, _) = tag(TPM_GENERATED_MAGIC)(i)?;
             let (i, type_) = tag(TPM_ST_ATTEST_QUOTE)(i)?;
             let (i, qualified_signer) = Name::read(i)?;
@@ -159,7 +161,7 @@ impl Quoted {
 
             Ok((
                 i,
-                Quoted {
+                Quote {
                     qualified_signer,
                     extra_data,
                     clock_info,
@@ -176,6 +178,15 @@ impl Quoted {
         }
 
         Ok(quoted)
+    }
+
+    pub fn compare_sha256(&self, pcr4: &[u8]) -> bool {
+        let mut hasher = Sha256::new();
+        // For each selected pcr, blablabla
+        hasher.write(pcr4).expect("unable to write hash");
+        let expected_hash = hasher.finalize_reset();
+
+        &expected_hash[..] == &self.attested.digest[..]
     }
 }
 
@@ -198,17 +209,13 @@ mod tests {
 
     #[test]
     fn parse_quoted_structure() {
-        let parsed = Quoted::read(quoted).expect("parse fixed structure");
+        let parsed = Quote::read(quoted).expect("parse fixed structure");
+
         let expected_pcr = &[
             0xd2, 0xdb, 0x51, 0x53, 0x9d, 0xa1, 0x04, 0x6b, 0x71, 0x94, 0x2a, 0x47, 0xcc, 0x7d,
             0xe4, 0xce, 0x21, 0x8f, 0x7b, 0x78, 0xa5, 0xd8, 0xec, 0xf6, 0x65, 0x3a, 0x97, 0x20,
             0xc8, 0xda, 0x55, 0xda,
         ];
-
-        let mut hasher = Sha256::new();
-        hasher.write(expected_pcr).expect("unable to write hash");
-        let expected_hash = hasher.finalize_reset();
-
-        assert_eq!(parsed.attested.digest, &expected_hash[..])
+        assert!(parsed.compare_sha256(expected_pcr));
     }
 }

@@ -6,9 +6,10 @@ use openssl::{
 };
 use tss_esapi::utils::AsymSchemeUnion;
 
-fn verify_quote(
+pub fn verify_quote(
     ak_pub: &str,
     quote: &[u8],
+    // TODO: meh, the AsymSchemeUnion is not great, can we use some standard here?
     quote_signature: (AsymSchemeUnion, &[u8]),
 ) -> Result<(), ()> {
     let pkey = Rsa::public_key_from_pem(ak_pub.as_bytes()).unwrap();
@@ -24,7 +25,7 @@ fn verify_quote(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tss_esapi::constants::algorithm::HashingAlgorithm::Sha256;
+    use tss_esapi::interface_types::algorithm::HashingAlgorithm::Sha256;
     use tss_esapi::utils::AsymSchemeUnion;
 
     const MANUFACTURER: &str = r#"

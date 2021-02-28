@@ -53,5 +53,6 @@
   environment.systemPackages = with pkgs; [
     tpm2-tools
     netboot.safeboot
+    openssl
   ];
 }
