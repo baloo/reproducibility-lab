@@ -7,7 +7,7 @@ What you'll find here is a prototype of a usecase for build-reproducibility. Thi
 How to answer that question:
   - [ ] Get your build reproducible.
 
-    Are we there yet? no, but close. https://www.r13y.com
+    Are we there yet? no, but close. https://r13y.com
 
     The last two outstanding issues are being worked on:
       - https://github.com/NixOS/nixpkgs/pull/107965
