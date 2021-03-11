@@ -1,25 +1,26 @@
 use openssl::{
     hash::MessageDigest,
-    pkey::PKey,
-    rsa::{Padding, Rsa},
+    pkey::{PKeyRef, Public},
+    rsa::Padding,
     sign::Verifier,
 };
 use tss_esapi::utils::AsymSchemeUnion;
 
+use crate::error::Error;
+
 pub fn verify_quote(
-    ak_pub: &str,
+    ak_pub: &PKeyRef<Public>,
     quote: &[u8],
     // TODO: meh, the AsymSchemeUnion is not great, can we use some standard here?
     quote_signature: (AsymSchemeUnion, &[u8]),
-) -> Result<(), ()> {
-    let pkey = Rsa::public_key_from_pem(ak_pub.as_bytes()).unwrap();
-    let pkey = PKey::from_rsa(pkey).unwrap();
-    let mut v = Verifier::new(MessageDigest::sha256(), &pkey).unwrap();
-    v.set_rsa_padding(Padding::PKCS1_PSS);
-    v.update(quote).unwrap();
-    let out = v.verify(quote_signature.1);
+) -> Result<(), Error> {
+    // TODO: quite a lot of hard coded schemes here
+    let mut v = Verifier::new(MessageDigest::sha256(), ak_pub)?;
+    v.set_rsa_padding(Padding::PKCS1_PSS)?;
+    v.update(quote)?;
+    v.verify(quote_signature.1)?;
 
-    out.map(|_| ()).map_err(|_| ())
+    Ok(())
 }
 
 #[cfg(test)]

@@ -1,5 +1,5 @@
 use clap::{App, Arg};
-use pcr_eventlog_attestation::{server::server, VERSION};
+use pcr_eventlog_attestation::{verifier::server, VERSION};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

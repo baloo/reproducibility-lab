@@ -1,7 +1,4 @@
-use sha2::{Digest as Sha2Digest, Sha256};
-use std::env;
 use std::io::Write;
-use std::path::Path;
 
 use nom::{
     bytes::complete::take,
@@ -9,6 +6,7 @@ use nom::{
     number::complete::{le_u16, le_u32},
     IResult,
 };
+use sha2::{Digest as Sha2Digest, Sha256};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum EventType {
@@ -180,6 +178,7 @@ pub fn parse_log(contents: &[u8]) -> Vec<Event> {
 
     let mut contents = &contents[..];
     let mut out = Vec::new();
+    // Note: the unwrap below can only fail if run out of usize.
     let (rest, first_event) =
         Event::read_sha1_log(contents, indexes.next().unwrap()).expect("parse first element");
     contents = &rest[..];

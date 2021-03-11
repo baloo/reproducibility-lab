@@ -1,5 +1,6 @@
 use clap::{App, Arg};
-use pcr_eventlog_attestation::{client::signer, VERSION};
+use pcr_eventlog_attestation::{attestor::signer, VERSION};
+use tss_esapi::Tcti;
 
 #[tokio::main]
 async fn main() {
@@ -28,6 +29,7 @@ async fn main() {
 
     let server = matches.value_of("server").unwrap();
     let eventlog = matches.value_of("eventlog").unwrap();
+    let tcti = Tcti::Swtpm(Default::default());
 
-    signer(server, eventlog).await;
+    let _ = signer(server, tcti, eventlog).await;
 }

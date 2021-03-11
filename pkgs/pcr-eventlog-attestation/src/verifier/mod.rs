@@ -4,16 +4,23 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use lazy_static::lazy_static;
-use openssl::rsa::Rsa;
-use openssl::x509::X509;
+use openssl::{
+    pkey::{PKey, Public},
+    x509::X509,
+};
 use rand::{thread_rng, Rng};
+use serde_cbor::from_slice;
 use tonic::{transport::Server, Request, Response, Status};
-use tss_esapi::interface_types::algorithm::HashingAlgorithm::Sha256;
-use tss_esapi::utils::AsymSchemeUnion;
+use tss_esapi::{interface_types::algorithm::HashingAlgorithm::Sha256, utils::AsymSchemeUnion};
 
-use crate::tpm::{
-    eventlog::{parse_log, recompute},
-    quote::Quote,
+use crate::{
+    error::Error,
+    tpm::{
+        credential::MakeCredential,
+        eventlog::{parse_log, recompute},
+        key::{PublicKey, TpmPublic},
+        quote::Quote,
+    },
 };
 
 use self::pea::pea_server::{Pea, PeaServer};
@@ -55,7 +62,7 @@ pub struct Service {
 impl Pea for Service {
     async fn nonce(
         &self,
-        request: Request<NonceRequest>,
+        _request: Request<NonceRequest>,
     ) -> Result<Response<NonceResponse>, Status> {
         let mut session_key = [0u8; 8];
         thread_rng().fill(&mut session_key);
@@ -93,9 +100,17 @@ impl Pea for Service {
 
         let message = request.get_ref();
 
+        let attestation_key_pub: TpmPublic = from_slice(&message.attestation_key_pub)
+            .map_err(Error::from)
+            .map_err::<Status, _>(|e| e.into())?;
+
         // First let's start by verifying the quote is valid
         verify_quote(
-            &message.attestation_key_pub,
+            attestation_key_pub
+                .pkey()
+                .map_err(Error::from)
+                .map_err::<Status, _>(|e| e.into())?
+                .as_ref(),
             &message.quote,
             (AsymSchemeUnion::RSAPSS(Sha256), &message.quote_signature),
         )
@@ -118,7 +133,7 @@ impl Pea for Service {
         // Then compare to the value in the quote
         if !quote.compare_sha256(&pcr) && false
         // TODO: check disabled for dev (I cant reset the tpm (using the swtpm control channel
-        // maybe?))
+        //       maybe?))
         {
             return Err(Status::invalid_argument("unexpected PCR value"));
         } else {
@@ -126,10 +141,25 @@ impl Pea for Service {
         }
 
         // Ensure we got a chain from root CA to ek
-        let endorsement_key_cert = X509::from_pem(message.endorsement_key_cert.as_bytes()).unwrap();
+        let endorsement_key_cert = X509::from_pem(message.endorsement_key_cert.as_bytes())
+            .map_err(Error::from)
+            .map_err::<Status, _>(|e| e.into())?;
+
         //TODO: this is not nearly enough to verify a certificate chain
-        let chain_verified = endorsement_key_cert.verify(&self.root_ca.public_key().unwrap());
-        println!("chain_verified: {:?}", chain_verified);
+        let root_ca: PKey<_> = self
+            .root_ca
+            .public_key()
+            .map_err(Error::from)
+            .map_err::<Status, _>(|e| e.into())?;
+        let chain_verified = endorsement_key_cert
+            .verify(&root_ca)
+            .map_err(Error::from)
+            .map_err::<Status, _>(|e| e.into())?;
+        if !chain_verified {
+            return Err(Status::invalid_argument(
+                "unable to verify the certificate chain",
+            ));
+        }
 
         // Check the ek pub is a match
         // NOTE: is that really necessary, do we really need to carry the public key separately?
@@ -137,18 +167,46 @@ impl Pea for Service {
         // The Makecredentials needs to check the attributes of the key carry the decrypt and
         // restricted flags, but ... they're not signed. Or is that just used in a KDF or some
         // sort?
-        let endorsement_key_pub =
-            Rsa::public_key_from_pem(message.endorsement_key_pub.as_bytes()).unwrap();
-        if endorsement_key_pub.n() != endorsement_key_cert.public_key().unwrap().rsa().unwrap().n() {
-            return Err(Status::invalid_argument("endorsement key pub does not match the certificate"));
+        let endorsement_key_pub: PublicKey = from_slice(&message.endorsement_key_pub)
+            .map_err(Error::from)
+            .map_err::<Status, _>(|e| e.into())?;
+
+        let endorsement_key_pub_from_cert: PKey<Public> = endorsement_key_cert
+            .public_key()
+            .map_err(Error::from)
+            .map_err::<Status, _>(|e| e.into())?;
+        {
+            let endorsement_key_pub: Result<PKey<Public>, Status> =
+                endorsement_key_pub.to_pkey().map_err(|e| e.into());
+            let endorsement_key_pub = endorsement_key_pub?;
+            if !endorsement_key_pub.public_eq(&endorsement_key_pub_from_cert) {
+                return Err(Status::invalid_argument(
+                    "endorsement key pub does not match the certificate",
+                ));
+            }
         }
 
-        let secret = "42 is a pronic number, but shhhh don't tell anyone.";       
+        let secret = "42 is a pronic number";
+        let ak_name = &attestation_key_pub
+            .name()
+            .map_err(Error::from)
+            .map_err::<Status, _>(|e| e.into())?;
 
-        
-        println!("session: {:?}", session);
+        println!("ak_name: {}", hex::encode(&ak_name));
 
-        unimplemented!("aljkalskjd");
+        let credential = endorsement_key_pub
+            // the same key has been used to verify the quote and we're now tying together the
+            // encryption key (endorsement) and the key (from its name which is derived from the
+            // key itself)
+            .make_credential(&ak_name, secret.as_bytes())
+            .map_err::<Status, _>(|e| e.into())?;
+
+        let reply = AuthChallenge {
+            credential_blob: credential.credential_blob,
+            secret: credential.secret,
+        };
+
+        Ok(Response::new(reply))
     }
 }
 

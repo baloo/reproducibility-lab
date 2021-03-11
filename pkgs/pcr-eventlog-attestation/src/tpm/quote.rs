@@ -149,7 +149,7 @@ impl Quote {
     pub fn read(input: &[u8]) -> Result<Self, ()> {
         fn read_(i: &[u8]) -> IResult<&[u8], Quote> {
             let (i, _) = tag(TPM_GENERATED_MAGIC)(i)?;
-            let (i, type_) = tag(TPM_ST_ATTEST_QUOTE)(i)?;
+            let (i, _type) = tag(TPM_ST_ATTEST_QUOTE)(i)?;
             let (i, qualified_signer) = Name::read(i)?;
             let (i, extra_data) = Data::read(i)?;
             let (i, clock_info) = ClockInfo::read(i)?;

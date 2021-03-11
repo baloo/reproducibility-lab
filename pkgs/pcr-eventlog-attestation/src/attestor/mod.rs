@@ -1,24 +1,30 @@
-use std::convert::TryFrom;
-use std::fs;
-use std::path::Path;
+use std::{convert::TryFrom, fs, path::Path};
 
+use serde_cbor::to_vec;
 use tss_esapi::{
     abstraction::{
         ak::{create_ak, load_ak},
         ek::{create_ek_object, retrieve_ek_pubcert},
         KeyCustomization,
     },
-    attributes::ObjectAttributesBuilder,
-    constants::tss::*,
-    handles::{KeyHandle, PcrHandle},
+    attributes::{ObjectAttributesBuilder, SessionAttributesBuilder},
+    constants::{tss::*, SessionType},
+    handles::{AuthHandle, KeyHandle, PcrHandle},
     interface_types::algorithm::{AsymmetricAlgorithm, HashingAlgorithm, SignatureScheme},
-    structures::{Auth, Data, Digest, DigestValues, PcrSelectionListBuilder, PcrSlot},
+    structures::{
+        Auth, Data, Digest, DigestValues, EncryptedSecret, IDObject, PcrSelectionListBuilder,
+        PcrSlot, SymmetricDefinition,
+    },
     tss2_esys::TPMT_SIG_SCHEME,
     utils::{Signature, SignatureData},
     Context, Result as TPMResult, Tcti,
 };
 
-use crate::utils::openssl::{der_to_x509, tpm_public_to_public_rsa};
+use crate::{
+    error::Error,
+    tpm::key::{PublicKey, TpmPublic},
+    utils::openssl::der_to_x509,
+};
 
 pub mod pea {
     tonic::include_proto!("grpc.pea");
@@ -55,7 +61,7 @@ fn pcr_quote(
 
     let res = context.quote(
         key_handle,
-        &Data::try_from(&nonce[..]).unwrap(),
+        &Data::try_from(&nonce[..])?,
         scheme,
         pcr_selection_list,
     )?;
@@ -66,10 +72,10 @@ fn pcr_quote(
 
 pub async fn signer<P: AsRef<Path>>(
     server: &str,
+    tcti: Tcti,
     eventlog: P,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let tcti = Tcti::Swtpm(Default::default());
-    let mut context = unsafe { Context::new(tcti) }.unwrap();
+    let mut context = unsafe { Context::new(tcti) }?;
 
     let mut client = PeaClient::connect(server.to_string()).await?;
 
@@ -175,57 +181,42 @@ pub async fn signer<P: AsRef<Path>>(
     println!("pcrs: {:02x?}", out);
 
     // Grab the certificate chain to the manufacturer CA.
-    let ek_cert = retrieve_ek_pubcert(&mut context, AsymmetricAlgorithm::Rsa).unwrap();
-    let ek_cert = der_to_x509(&ek_cert);
-    let ek_cert = String::from_utf8(ek_cert.to_pem().unwrap()).unwrap();
+    let ek_cert = retrieve_ek_pubcert(&mut context, AsymmetricAlgorithm::Rsa)?;
+    let ek_cert = der_to_x509(&ek_cert).to_pem()?;
+    let ek_cert = String::from_utf8(ek_cert)?;
 
     // Create the endorsement key, signed by the manufacturer
-    let (ek_key_handle, ek_pub_key) = context
-        .execute_with_nullauth_session(|ctx| {
-            let key_handle = create_ek_object(ctx, AsymmetricAlgorithm::Rsa, None)?;
-            let (public, name, qualified_name) = ctx.read_public(key_handle)?;
-            let pub_key = unsafe { tpm_public_to_public_rsa(&public) };
+    let ek_key_handle = create_ek_object(&mut context, AsymmetricAlgorithm::Rsa, None)?;
+    let (ek_pub_key, _, _) = context.read_public(ek_key_handle).map_err(Error::from)?;
 
-            Ok((key_handle, pub_key))
-        })
-        .unwrap();
-    let ek_pub_key = String::from_utf8(ek_pub_key.public_key_to_pem().unwrap()).unwrap();
+    let ek_pub_key = PublicKey::try_from(&ek_pub_key)?;
 
-    // TODO: Can we bind this to the session?
-    //       Could we just bind it to a nonce?
-    let auth = Auth::try_from(vec![0x1, 0x2, 0x42]).unwrap();
-    let auth = Some(&auth);
-    let auth = None;
+    let ak_auth = Auth::try_from(vec![0x1, 0x2, 0x42])?;
+    let ak_auth = Some(&ak_auth);
 
-    let (key_handle, ak_name, ak_pub_key) = context
-        .execute_with_nullauth_session(|ctx| {
-            let ak = create_ak(
-                ctx,
-                ek_key_handle,
-                HashingAlgorithm::Sha256,
-                SignatureScheme::RsaPss,
-                auth,
-                &StClearKeys,
-            )?;
+    let (ak_key_handle, ak_name, ak_public) = context.execute_with_nullauth_session(|ctx| {
+        let ak = create_ak(
+            ctx,
+            ek_key_handle,
+            HashingAlgorithm::Sha256,
+            SignatureScheme::RsaPss,
+            ak_auth,
+            &StClearKeys,
+        )?;
 
-            let key_handle = load_ak(ctx, ek_key_handle, auth, ak.out_private, ak.out_public)?;
+        let key_handle = load_ak(ctx, ek_key_handle, ak_auth, ak.out_private, ak.out_public)?;
 
-            let (public, name, qualified_name) = ctx.read_public(key_handle)?;
+        let (public, name, _qualified_name) = ctx.read_public(key_handle)?;
 
-            let pub_key = unsafe { tpm_public_to_public_rsa(&public) };
-
-            Ok((key_handle, name, pub_key))
-        })
-        .unwrap();
+        let public = TpmPublic::from(public);
+        Ok((key_handle, name, public))
+    })?;
 
     // TODO flush transient?
 
-    let ak_pub_key = String::from_utf8(ak_pub_key.public_key_to_pem().unwrap()).unwrap();
-
     let ref nonce = response.get_ref().nonce;
-    let quote = context
-        .execute_with_nullauth_session(|ctx| pcr_quote(ctx, nonce, key_handle))
-        .unwrap();
+    let quote =
+        context.execute_with_nullauth_session(|ctx| pcr_quote(ctx, nonce, ak_key_handle))?;
 
     // TODO: we need to carry the signature scheme and ... overall get a better serializer here
     let rsa_signature = if let SignatureData::RsaSignature(ref s) = quote.1.signature {
@@ -234,16 +225,15 @@ pub async fn signer<P: AsRef<Path>>(
         panic!("ecc not implemented yet");
     };
 
-    let eventlog = fs::read(eventlog).unwrap();
+    let eventlog = fs::read(eventlog)?;
 
-    println!("ek_cert:\n{}\nek_pub:\n{}", ek_cert, ek_pub_key);
+    println!("ek_cert:\n{}\nek_pub:\n{:?}", ek_cert, ek_pub_key);
 
     let request = tonic::Request::new(AuthRequest {
         session_key: response.get_ref().session_key.clone(),
         endorsement_key_cert: ek_cert,
-        endorsement_key_pub: ek_pub_key,
-        attestation_key_pub: ak_pub_key,
-        attestation_key_name: ak_name.value().to_vec(),
+        endorsement_key_pub: to_vec(&ek_pub_key)?,
+        attestation_key_pub: to_vec(&ak_public)?,
         eventlog,
         quote: quote.0,
         quote_signature: rsa_signature,
@@ -251,8 +241,70 @@ pub async fn signer<P: AsRef<Path>>(
     println!("send auth");
     let response = client.auth(request).await?;
     println!("got? auth");
+    let ref response = response.get_ref();
 
-    println!("response: {:?}", response);
+    println!(
+        "credential_blob: {}",
+        hex::encode(&response.credential_blob)
+    );
+    println!("secret: {}", hex::encode(&response.secret));
+
+    let credential_blob = IDObject::try_from({
+        let blob: &[u8] = &response.credential_blob;
+        blob
+    })?;
+    let secret = EncryptedSecret::try_from({
+        let secret: &[u8] = &response.secret;
+        secret
+    })?;
+
+    let (session_aastributes, session_attributes_mask) = SessionAttributesBuilder::new().build();
+    let session_1 = context.start_auth_session(
+        None,
+        None,
+        None,
+        SessionType::Hmac,
+        SymmetricDefinition::AES_256_CFB,
+        HashingAlgorithm::Sha256,
+    )?;
+    context.tr_sess_set_attributes(
+        session_1.unwrap(),
+        session_aastributes,
+        session_attributes_mask,
+    )?;
+    let session_2 = context.start_auth_session(
+        None,
+        None,
+        None,
+        SessionType::Policy,
+        SymmetricDefinition::AES_256_CFB,
+        HashingAlgorithm::Sha256,
+    )?;
+    context.tr_sess_set_attributes(
+        session_2.unwrap(),
+        session_aastributes,
+        session_attributes_mask,
+    )?;
+
+    println!("ak_name: {}", hex::encode(ak_name.value()));
+
+    let _ = context.execute_with_session(session_1, |ctx| {
+        ctx.policy_secret(
+            session_2.unwrap(),
+            AuthHandle::Endorsement,
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            None,
+        )
+    })?;
+
+    context.set_sessions((session_1, session_2, None));
+
+    let decrypted =
+        context.activate_credential(ak_key_handle, ek_key_handle, credential_blob, secret)?;
+
+    println!("decrypted: {:?}", decrypted);
 
     Ok(())
 }

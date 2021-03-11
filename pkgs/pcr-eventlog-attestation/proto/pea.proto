@@ -13,16 +13,16 @@ message NonceResponse {
 message AuthRequest {
   bytes session_key = 1;
   string endorsement_key_cert = 2;
-  string endorsement_key_pub = 3;
-  string attestation_key_pub = 4;
-  bytes attestation_key_name = 5;
-  bytes eventlog = 6;
-  bytes quote = 7;
-  bytes quote_signature = 8;
+  bytes endorsement_key_pub = 3;
+  bytes attestation_key_pub = 4;
+  bytes eventlog = 5;
+  bytes quote = 6;
+  bytes quote_signature = 7;
 }
 
 message AuthChallenge {
-  bytes challenge = 1;
+  bytes credential_blob = 1;
+  bytes secret = 2;
 }
 
 service Pea {

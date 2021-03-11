@@ -1,12 +1,7 @@
 let
   moz_overlay = import (builtins.fetchTarball https://codeload.github.com/mozilla/nixpkgs-mozilla/tar.gz/master);
-  tpm2_support_overlay = self: super: {
-    libtpms = super.libtpms.override {
-      tpm2Support = true;
-    };
-  };
   nixpkgs = import <nixpkgs> {
-    overlays = [ moz_overlay tpm2_support_overlay ];
+    overlays = [ moz_overlay ];
   };
   rustNightly = (nixpkgs.latest.rustChannels.nightly.rust.override {
     extensions = [ "rust-src" "rust-analysis" ];}
@@ -160,6 +155,7 @@ in
         --createek --decryption --create-ek-cert \
         --create-platform-cert \
         --display
+      #/home/baloo/dev/swtpm/src/swtpm/.libs/swtpm socket \
       ${swtpm'}/bin/swtpm socket \
         --tpm2 \
         --tpmstate dir=${swtpm_datastore} \
@@ -167,12 +163,16 @@ in
         --log fd=1,level=5 \
         --flags not-need-init,startup-clear
     '';
+    openssl3 = (import ./nix/openssl3.nix { inherit nixpkgs; })
+      .openssl_3_0_0_alpha12;
   in stdenv.mkDerivation {
     name = "rust";
     nativeBuildInputs = [
       pkg-config
       swtpm'
       swtpm_run
+
+      cargo-watch
 
       vimConfigured
     ];
@@ -181,12 +181,17 @@ in
       tpm2-tss
       llvm
       clang
-      openssl
+      openssl3
     ];
     LIBCLANG_PATH = "${llvmPackages.clang-unwrapped.lib}/lib";
     PROTOBUF_LOCATION = protobuf.out;
     PROTOC = "${protobuf.out}/bin/protoc";
     PROTOC_INCLUDE = "${protobuf.out}/include";
     ROOT_CA = cert;
+    
+    shellHook = ''
+      alias vi="${vimConfigured}/bin/nvim";
+      alias vim=vi;
+    '';
   }
 
