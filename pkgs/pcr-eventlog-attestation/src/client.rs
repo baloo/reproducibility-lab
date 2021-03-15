@@ -113,6 +113,7 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
         "with import (builtins.fetchTarball \"{}/archive/{}.tar.gz\") {{}}; http-image(\"{}\")",
         "https://github.com/baloo/reproducibility-lab/", &response.image_id, &response.image_id
     );
+    println!("evaluation = {}", &evaluation);
     let command = Command::new("nix-build")
         .args(&["-E", &evaluation])
         .output()
