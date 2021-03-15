@@ -20,22 +20,10 @@ rec {
       inherit pecoff-checksum;
     };
 
-    pecoff-checksum = self.callPackage ./pecoff-checksum { inherit signify; };
+    pecoff-checksum = self.callPackage ./pecoff-checksum { };
 
     safeboot = self.callPackage ./safeboot { };
-  };
 
-  # https://github.com/NixOS/nixpkgs/pull/114054
-  certvalidator = self.callPackage ./certvalidator {
-    asn1crypto = self.python3Packages.asn1crypto;
-    oscrypto = self.python3Packages.oscrypto;
-    pytestCheckHook = self.python3.pytestCheckHook;
-    buildPythonPackage = self.python3Packages.buildPythonPackage;
-  };
-  signify = self.callPackage ./signify {
-    pythonOlder = self.python3.pythonOlder;
-    pyasn1 = self.python3Packages.pyasn1;
-    pyasn1-modules = self.python3Packages.pyasn1-modules;
-    buildPythonPackage = self.python3Packages.buildPythonPackage;
+    pea = self.callPackage ./pcr-eventlog-attestation { };
   };
 }

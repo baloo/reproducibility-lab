@@ -18,11 +18,12 @@ How to answer that question:
 
   - [x] Boot a linux image that will be hashed by a TPM.
 
-  - [ ] Extract the TPM eventlog to get the different element that were involved in building the PCR[4]
+  - [x] Extract the TPM eventlog to get the different element that were involved in building the PCR[4]
     ![eventlog](doc/images/eventlog.png)
 
-  - [ ] Get an attestion of the current state (most importantly here, the PCR[4]) of the system using a remote attestation protocol:
+  - [x] Get an attestion of the current state (most importantly here, the PCR[4]) of the system using a remote attestation protocol:
     https://safeboot.dev/attestation/#attestation-protocol
+    ![verifier](doc/images/verifier.png)
 
 From that point, you should be able to:
   - Take the source of the build tree.

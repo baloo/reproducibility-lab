@@ -28,12 +28,12 @@ func (h *handler) buildDerivation() string {
 
 // EDK2 UEFI does not negociate gzip :(
 // This function is useless for now
-// 
+//
 // Feeds gzip garbage data (deflate to empty bytestring), until an image is built
 func (h *handler) ServeHTTPGzip(w http.ResponseWriter, r *http.Request) {
-        // There are 2 http spec violation here:
-        //  - The content-encoding should be negociated by the client
-        //  - Transfer-Encoding chunked is only available on http/1.1 
+	// There are 2 http spec violation here:
+	//  - The content-encoding should be negociated by the client
+	//  - Transfer-Encoding chunked is only available on http/1.1
 	f := w.(http.Flusher)
 
 	w.Header().Add("Transfer-Encoding", "chunked")
@@ -80,18 +80,26 @@ func (h *handler) ServeHTTPGzip(w http.ResponseWriter, r *http.Request) {
 	f.Flush()
 }
 
-func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+//func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+//	log.Printf("r: %s", r.URL)
+//	log.Printf("r: %s", r.RequestURI)
+//
+//	http.ServeFile(w, r, image+"/linux.efi")
+//}
+
+func (h *handler) entrypoint(w http.ResponseWriter, req *http.Request) {
 	derivation := h.buildDerivation()
 	log.Printf("derivation: %s", derivation)
 	image := h.buildImage(derivation)
-	log.Printf("output image: %s", image)
 
-	http.ServeFile(w, r, image+"/linux.efi")
+	log.Printf("output image: %s", image)
+	http.ServeFile(w, req, image+"/linux.efi")
 }
 
 func main() {
+	h := handler{}
 
-	http.Handle("/image", &handler{})
+	http.HandleFunc("/image", h.entrypoint)
 
 	log.Fatal(http.ListenAndServe(":8000", nil))
 }

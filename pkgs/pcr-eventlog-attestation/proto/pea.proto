@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package grpc.pea;
+
+message QuoteRequest {
+  bytes nonce = 1;
+}
+
+message Quote {
+  string endorsement_key_cert = 1;
+  bytes endorsement_key_pub = 2;
+  bytes attestation_key_pub = 3;
+  bytes eventlog = 4;
+  bytes quote = 5;
+  bytes quote_signature = 6;
+  string image_id = 7;
+}
+
+message AuthChallenge {
+  bytes credential_blob = 1;
+  bytes secret = 2;
+}
+
+message AuthComplete {
+  bytes proof = 1;
+}
+
+service Pea {
+  rpc Nonce(QuoteRequest) returns (Quote) {}
+  rpc Auth(AuthChallenge) returns (AuthComplete) {}
+}
