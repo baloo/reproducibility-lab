@@ -113,7 +113,6 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
         "with import (builtins.fetchTarball \"{}/archive/{}.tar.gz\") {{}}; http-image(\"{}\")",
         "https://github.com/baloo/reproducibility-lab/", &response.image_id, &response.image_id
     );
-    println!("evaluation = {}", &evaluation);
     let command = Command::new("nix-build")
         .args(&["-E", &evaluation])
         .output()
@@ -131,9 +130,6 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
     } else {
         errors.push(ValidationError::ImageChecksumMismatch);
     }
-    println!("image_path {:?}", image_path);
-    println!("instore checksum: {}", hex::encode(&checksum.sha256));
-    println!("image_checksum {}", hex::encode(image_checksum));
 
     // Ensure we got a chain from root CA to ek
     let endorsement_key_cert =
