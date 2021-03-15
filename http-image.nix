@@ -1,3 +1,5 @@
+{ buildCommitId ? null }:
+
 let
   system = "x86_64-linux";
   overlays = [
@@ -17,7 +19,7 @@ let
       {});
   build = configEvaled.config.system.build;
   kernelTarget = configEvaled.pkgs.stdenv.hostPlatform.linux-kernel.target;
-  commitid = lib.commitIdFromGitRepo ./.git;
+  commitid = if buildCommitId != null then buildCommitId else (lib.commitIdFromGitRepo ./.git);
 in pkgs.netboot.uefiBundle {
   kernel = build.kernel;
   initrd = build.netbootRamdisk;
