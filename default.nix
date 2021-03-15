@@ -1,4 +1,4 @@
 {...}:
 {
-http-image = import ./http-image.nix;
+  http-image = commitid: import ./http-image.nix {buildCommitId = commitid};
 }
