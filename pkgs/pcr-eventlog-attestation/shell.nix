@@ -163,12 +163,13 @@ in
         --log fd=1,level=5 \
         --flags not-need-init,startup-clear
     '';
-    openssl3 = (import ./nix/openssl3.nix { inherit nixpkgs; })
-      .openssl_3_0_0_alpha12;
+    openssl3 = (import ./nix/openssl3.nix { inherit (nixpkgs) openssl_1_1 fetchurl enableDebugging; })
+      .openssl_3_0_0_alpha13;
   in stdenv.mkDerivation {
     name = "rust";
     nativeBuildInputs = [
       pkg-config
+      llvmPackages.clang
       swtpm'
       swtpm_run
 
@@ -178,12 +179,10 @@ in
     ];
     buildInputs = [
       rustNightly
-      tpm2-tss
-      llvm
-      clang
+      tpm2-tss llvm llvmPackages.libclang
       openssl3
     ];
-    LIBCLANG_PATH = "${llvmPackages.clang-unwrapped.lib}/lib";
+    LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
     PROTOBUF_LOCATION = protobuf.out;
     PROTOC = "${protobuf.out}/bin/protoc";
     PROTOC_INCLUDE = "${protobuf.out}/include";

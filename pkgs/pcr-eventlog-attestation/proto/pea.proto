@@ -2,22 +2,18 @@ syntax = "proto3";
 
 package grpc.pea;
 
-message NonceRequest {
+message QuoteRequest {
+  bytes nonce = 1;
 }
 
-message NonceResponse {
-  bytes session_key = 1;
-  bytes nonce = 2;
-}
-
-message AuthRequest {
-  bytes session_key = 1;
-  string endorsement_key_cert = 2;
-  bytes endorsement_key_pub = 3;
-  bytes attestation_key_pub = 4;
-  bytes eventlog = 5;
-  bytes quote = 6;
-  bytes quote_signature = 7;
+message Quote {
+  string endorsement_key_cert = 1;
+  bytes endorsement_key_pub = 2;
+  bytes attestation_key_pub = 3;
+  bytes eventlog = 4;
+  bytes quote = 5;
+  bytes quote_signature = 6;
+  string image_id = 7;
 }
 
 message AuthChallenge {
@@ -25,7 +21,11 @@ message AuthChallenge {
   bytes secret = 2;
 }
 
+message AuthComplete {
+  bytes proof = 1;
+}
+
 service Pea {
-  rpc Nonce(NonceRequest) returns (NonceResponse) {}
-  rpc Auth(AuthRequest) returns (AuthChallenge) {}
+  rpc Nonce(QuoteRequest) returns (Quote) {}
+  rpc Auth(AuthChallenge) returns (AuthComplete) {}
 }

@@ -1,6 +1,5 @@
 use clap::{App, Arg};
-use pcr_eventlog_attestation::{attestor::signer, VERSION};
-use tss_esapi::Tcti;
+use pcr_eventlog_attestation::{client::verifier, VERSION};
 
 #[tokio::main]
 async fn main() {
@@ -17,19 +16,21 @@ async fn main() {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("eventlog")
-                .short("e")
-                .long("eventlog")
+            Arg::with_name("capath")
+                .short("c")
+                .long("capath")
                 .value_name("FILE")
-                .help("The UEFI event log")
+                .help("The path to a root ca or a capath directory")
                 .required(true)
                 .takes_value(true),
         )
         .get_matches();
 
     let server = matches.value_of("server").unwrap();
-    let eventlog = matches.value_of("eventlog").unwrap();
-    let tcti = Tcti::Swtpm(Default::default());
+    let capath = matches.value_of("capath").unwrap();
 
-    let _ = signer(server, tcti, eventlog).await;
+    let _ = verifier(server, capath).await.map_err(|e| {
+        eprintln!("error: {}", e);
+        e
+    });
 }

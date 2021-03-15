@@ -367,6 +367,12 @@ impl From<TPM2B_PUBLIC> for TpmPublic {
         Self(t)
     }
 }
+impl TryFrom<&[u8]> for TpmPublic {
+    type Error = Error;
+    fn try_from(_s: &[u8]) -> Result<Self, Self::Error> {
+        unimplemented!("TpmPublic::try_from(&[u8])");
+    }
+}
 
 impl Serialize for TpmPublic {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>

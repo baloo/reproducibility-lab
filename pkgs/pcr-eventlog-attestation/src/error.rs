@@ -17,6 +17,11 @@ pub enum Error {
     PreconditionFailed,
     Io(IoError),
     Cbor(serde_cbor::Error),
+    Tonic(tonic::transport::Error),
+    TonicClient(tonic::Status),
+    Utf8(std::string::FromUtf8Error),
+    InvalidPath,
+    ParseError,
 }
 
 macro_rules! error_from {
@@ -34,6 +39,9 @@ error_from!(KDFError, Error::Kdf);
 error_from!(TssError, Error::Tss);
 error_from!(IoError, Error::Io);
 error_from!(serde_cbor::Error, Error::Cbor);
+error_from!(tonic::transport::Error, Error::Tonic);
+error_from!(tonic::Status, Error::TonicClient);
+error_from!(std::string::FromUtf8Error, Error::Utf8);
 
 impl Into<Status> for Error {
     fn into(self) -> Status {
@@ -46,6 +54,11 @@ impl Into<Status> for Error {
             PreconditionFailed => Status::failed_precondition("Precondition failed"),
             Io(_) => Status::internal("Io error"),
             Cbor(_) => Status::internal("cbor error"),
+            Tonic(_) => Status::internal("transport error"),
+            TonicClient(_) => Status::internal("client error"),
+            Utf8(_) => Status::internal("invalid utf8 sequence"),
+            InvalidPath => Status::internal("invalid path"),
+            ParseError => Status::internal("parse error"),
         }
     }
 }
@@ -61,8 +74,25 @@ impl Display for Error {
             PreconditionFailed => write!(f, "Error::PreconditionFailed"),
             Io(ref e) => write!(f, "Error::Io({})", e),
             Cbor(ref e) => write!(f, "Error::Cbor({})", e),
+            Tonic(ref e) => write!(f, "Error::Tonic({})", e),
+            TonicClient(ref e) => write!(f, "Error::TonicClient({})", e),
+            Utf8(ref e) => write!(f, "Error::Utf8({})", e),
+            InvalidPath => write!(f, "Error::InvalidPath"),
+            ParseError => write!(f, "Error::ParseError"),
         }
     }
 }
 
 impl StdError for Error {}
+
+#[derive(Debug)]
+pub enum ValidationError {
+    NonceMismatch {
+        expected: Vec<u8>,
+        received: Vec<u8>,
+    },
+    UnexpectedPCR,
+    EndorsementKeyMismatch,
+    CertificationChainBroken,
+    ProofMismatch,
+}

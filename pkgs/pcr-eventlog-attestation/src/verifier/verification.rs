@@ -26,6 +26,8 @@ pub fn verify_quote(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tpm::key::TpmPublic;
+    use std::convert::TryFrom;
     use tss_esapi::interface_types::algorithm::HashingAlgorithm::Sha256;
     use tss_esapi::utils::AsymSchemeUnion;
 
@@ -98,16 +100,7 @@ sQulcA46NYohakgamn80Pdfif43js80cn6xkNcP9b5uk2n4z2YgpPcgbXCNwLFki
 3QIDAQAB
 -----END PUBLIC KEY-----"#;
 
-    const AK_PUB: &str = r#"-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4evHzNv8+LfWY2Z/uIEY
-mvt5+0IykHjQ4O9irRPz2SOlTr1qVYMUMQXuoT+oy/ihsPLlUkPjtdsySZg7fr09
-1o1OgVQgM90TPxUUW64P+8j9/nsQkmCwn2BGprGczXroFa2djJMM3ig3UCPto+Py
-yIfZ73iZlQAASRTDM4pr3Nhvn2uG2mEYYgUMGElYlhwj8lIiDovLL2CYfybNEdIq
-gQ/HHwr9pMqLejnJlXji8C4u77BMXc2gtlVJz9eOowiuV+bGLbW/SFwxio4C7Ru7
-53RrUJIpUHjgOEEEPqPro+argH2HCVVoneQmvajT3D83KMrzf0ilN76cyGa7M2H/
-lwIDAQAB
------END PUBLIC KEY-----
-"#;
+    const AK_PUB: &[u8] = &[]; // TODO
 
     const QUOTE: &[u8] = &[
         0xff, 0x54, 0x43, 0x47, 0x80, 0x18, 0x0, 0x22, 0x0, 0xb, 0xdc, 0xba, 0x11, 0x90, 0x22,
@@ -147,6 +140,15 @@ lwIDAQAB
 
     #[test]
     fn quote() {
-        verify_quote(AK_PUB, QUOTE, QUOTE_SIGNATURE).expect("verify signature");
+        let ak_pub = TpmPublic::try_from(AK_PUB).expect("parse public attestation key");
+        verify_quote(
+            ak_pub
+                .pkey()
+                .expect("create openssl pkey from tpm_public")
+                .as_ref(),
+            QUOTE,
+            QUOTE_SIGNATURE,
+        )
+        .expect("verify signature");
     }
 }

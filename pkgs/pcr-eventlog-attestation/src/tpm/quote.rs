@@ -10,6 +10,8 @@ use nom::{
 };
 use sha2::{Digest as Sha2Digest, Sha256};
 
+use crate::error::Error;
+
 const TPM_GENERATED_MAGIC: &[u8] = &[0xff, 0x54, 0x43, 0x47]; // 0xFF TCG
                                                               // 6.9 TPM_ST (Structure Tags)
 const TPM_ST_ATTEST_QUOTE: &[u8] = &[0x80, 0x18];
@@ -146,7 +148,7 @@ pub struct Quote {
 }
 
 impl Quote {
-    pub fn read(input: &[u8]) -> Result<Self, ()> {
+    pub fn read(input: &[u8]) -> Result<Self, Error> {
         fn read_(i: &[u8]) -> IResult<&[u8], Quote> {
             let (i, _) = tag(TPM_GENERATED_MAGIC)(i)?;
             let (i, _type) = tag(TPM_ST_ATTEST_QUOTE)(i)?;
@@ -171,10 +173,9 @@ impl Quote {
             ))
         }
 
-        let (out, quoted) = read_(input).map_err(|_| ())?;
-        println!("out: {:?}", out);
+        let (out, quoted) = read_(input).map_err(|_| Error::ParseError)?;
         if out.len() != 0 {
-            return Err(());
+            return Err(Error::ParseError);
         }
 
         Ok(quoted)
