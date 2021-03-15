@@ -1,1 +1,4 @@
-http-image.nix
+{...}:
+{
+http-image = import ./http-image.nix;
+}
