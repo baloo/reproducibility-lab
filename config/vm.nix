@@ -36,6 +36,8 @@
 
   documentation.enable = false;
   documentation.nixos.enable = false;
+
+  #boot.kernelPackages = pkgs.linuxPackages_latest;
   
   users.users.nixos = {};
   services.getty.autologinUser = lib.mkForce null;
@@ -43,16 +45,25 @@
 
   security.tpm2 = {
     enable = true;
-    abrmd.enable = true;
     tctiEnvironment = {
       enable = true;
-      interface = "tabrmd";
+      interface = "device";
     };
   };
 
   environment.systemPackages = with pkgs; [
     tpm2-tools
-    netboot.safeboot
     openssl
   ];
+
+  networking.firewall.allowedTCPPorts = [ 1234 ];
+  systemd.services.pea = {
+    enable = true;
+    description  = "PCR eventlog attestation server";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" ];
+    script = ''
+      TCTI=device ${pkgs.netboot.pea}/bin/server --eventlog /sys/kernel/security/tpm0/binary_bios_measurements --image-id $(sed -r 's/.* imageid=([0-9a-f]+) .*/\1/' /proc/cmdline) --listen '0.0.0.0:1234'
+    '';
+  };
 }

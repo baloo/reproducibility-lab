@@ -32,7 +32,7 @@ pkgs.mkShell rec {
         git
         man
 
-        go_1_15
+        go_1_16
 	golint
 
         openssl

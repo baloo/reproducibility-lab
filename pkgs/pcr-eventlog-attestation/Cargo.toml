@@ -8,10 +8,12 @@ edition = "2018"
 
 [dependencies]
 nom = "5"
-# tss-esapi = { git="https://github.com/baloo/rust-tss-esapi", branch="baloo/key_customization.v2", features=["generate-bindings"] }
-tss-esapi = { path="./rust-tss-esapi/tss-esapi", features=["generate-bindings"] }
+tss-esapi = { git="https://github.com/parallaxsecond/rust-tss-esapi", branch="master", features=["generate-bindings"] }
+#tss-esapi = { path="./rust-tss-esapi/tss-esapi", features=["generate-bindings"] }
 sha2 = "0.9.3"
-openssl = "0.10.32"
+#openssl = "0.10.33"
+openssl = { git = "https://github.com/baloo/rust-openssl", branch = "baloo/openssl-300/kdf" }
+#openssl = { path = '/home/baloo/dev/rust-openssl/openssl' }
 clap = "2.33.3"
 serde = "1.0.123"
 serde_derive = "1.0.123"
@@ -28,6 +30,5 @@ prost = "0.7.0"
 [build-dependencies]
 tonic-build = { version = "0.4.0", features = ["prost"] }
 
-[patch.crates-io]
-# openssl = { git = "https://github.com/baloo/rust-openssl", branch = "baloo/openssl-300/kdf" }
-openssl = { path = '/home/baloo/dev/rust-openssl/openssl' }
+#[patch.crates-io]
+#openssl = { path = '/home/baloo/dev/rust-openssl/openssl' }

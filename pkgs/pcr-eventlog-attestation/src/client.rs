@@ -48,6 +48,8 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
 
     let mut nonce = [0u8; 32];
     thread_rng().fill(&mut nonce);
+    println!("=== Remote attestation of server ===");
+    println!("url = {}", server);
     let mut client = PeaClient::connect(server.to_string()).await?;
     let request = tonic::Request::new(QuoteRequest {
         nonce: (&nonce).to_vec(),
@@ -66,6 +68,7 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
         &response.quote,
         (AsymSchemeUnion::RSAPSS(Sha256), &response.quote_signature),
     )?;
+    println!("quote is signed by attestation key: ✔️");
 
     // Parse the quote itself
     let quote = Quote::read(&response.quote)?;
@@ -76,12 +79,13 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
             expected: nonce.to_vec(),
             received: quote.extra_data.to_vec(),
         });
+    } else {
+        println!("quote nonce valid: ✔️");
     }
 
     // Parse the eventlog
     let out = parse_log(&response.eventlog);
-    let pcr = recompute(out);
-    println!("pcr_expected[4]= {:02x?}", pcr);
+    let (image_checksum, pcr) = recompute(out);
 
     // Then compare to the value in the quote
     if !quote.compare_sha256(&pcr) && false
@@ -90,7 +94,7 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
     {
         errors.push(ValidationError::UnexpectedPCR);
     } else {
-        println!("success");
+        println!("quote match eventlog: ✔️");
     }
 
     // Ensure we got a chain from root CA to ek
@@ -107,6 +111,8 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
     })?;
     if !chain_verified {
         errors.push(ValidationError::CertificationChainBroken);
+    } else {
+        println!("endorsement key certificate trusted: ✔️");
     }
 
     // Check the ek pub is a match
@@ -125,14 +131,16 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
         let endorsement_key_pub = endorsement_key_pub?;
         if !endorsement_key_pub.public_eq(&endorsement_key_pub_from_cert) {
             errors.push(ValidationError::EndorsementKeyMismatch);
+        } else {
+            println!("endorsement key certificate matches public key: ✔️");
         }
     }
+
+    // Compare image
 
     // TODO: Get a proper nonce here
     let secret = "42 is a pronic number";
     let ak_name = &attestation_key_pub.name().map_err(Error::from)?;
-
-    println!("ak_name: {}", hex::encode(&ak_name));
 
     let credential = endorsement_key_pub
         // the same key has been used to verify the quote and we're now tying together the
@@ -148,10 +156,13 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
 
     if response.get_ref().proof != secret.as_bytes() {
         errors.push(ValidationError::ProofMismatch);
+    } else {
+        println!("server replied with proof of secret: ✔️");
     }
 
-    println!("success?");
-    println!("errors: {:?}", errors);
+    if errors.len() == 0 {
+        println!("server authenticated: ✔️");
+    }
 
     Ok(())
 }

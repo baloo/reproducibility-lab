@@ -202,9 +202,10 @@ pub fn parse_log(contents: &[u8]) -> Vec<Event> {
     out
 }
 
-pub fn recompute(log: Vec<Event>) -> Vec<u8> {
+pub fn recompute(log: Vec<Event>) -> (Vec<u8>, Vec<u8>) {
     let mut hasher = Sha256::new();
     let mut value = [0u8; 32];
+    let mut image_checksum = [0u8; 32];
 
     for i in log
         .iter()
@@ -214,7 +215,7 @@ pub fn recompute(log: Vec<Event>) -> Vec<u8> {
             for h in i.digests.iter() {
                 match h {
                     Digest::Sha256(ref v) => {
-                        println!("image checksum: {:02x?}", &v[..]);
+                        image_checksum.copy_from_slice(&v[..]);
                     }
                     _ => {}
                 }
@@ -234,5 +235,5 @@ pub fn recompute(log: Vec<Event>) -> Vec<u8> {
         value.copy_from_slice(&new_pcr[..]);
     }
 
-    value[..].to_vec()
+    (image_checksum[..].to_vec(), value[..].to_vec())
 }

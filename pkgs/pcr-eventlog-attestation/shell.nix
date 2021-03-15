@@ -163,7 +163,7 @@ in
         --log fd=1,level=5 \
         --flags not-need-init,startup-clear
     '';
-    openssl3 = (import ./nix/openssl3.nix { inherit (nixpkgs) openssl_1_1 fetchurl enableDebugging; })
+    openssl3 = (import ./nix/openssl3.nix { inherit (nixpkgs) openssl_1_1 fetchurl; })
       .openssl_3_0_0_alpha13;
   in stdenv.mkDerivation {
     name = "rust";

@@ -19,7 +19,7 @@ stdenvNoCC.mkDerivation {
   dontUnpack = true;
 
   buildPhase = ''
-    echo -n "init=${toplevel}/init ${toString kernelParams}" > kernel-command-line.txt
+    echo -n "init=${toplevel}/init ${toString kernelParams} image=$out" > kernel-command-line.txt
     echo "netboot nixos" > osrel
 
     # Here we're bundling both kernel, commandline and initrd in a single image

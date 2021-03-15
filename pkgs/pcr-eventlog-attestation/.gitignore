@@ -1,1 +1,4 @@
 /target
+/rust-tss-esapi
+/reftpm-vs-openssl
+/tmp

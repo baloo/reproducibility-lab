@@ -1,10 +1,9 @@
 { openssl_1_1 
 , fetchurl
-, enableDebugging
 }:
 
 {
-  openssl_3_0_0_alpha13 = enableDebugging(openssl_1_1.overrideAttrs(old: rec {
+  openssl_3_0_0_alpha13 = openssl_1_1.overrideAttrs(old: rec {
     version = "3.0.0-alpha13";
     src = fetchurl {
       url = "https://www.openssl.org/source/${old.pname}-${version}.tar.gz";
@@ -18,5 +17,5 @@
     ];
     # To debug, break the glass
     #postConfigure = "perl configdata.pm --dump ";
-  }));
+  });
 }
