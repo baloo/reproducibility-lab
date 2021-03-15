@@ -40,20 +40,16 @@ struct Service {
 
 impl Drop for Service {
     fn drop(&mut self) {
-        eprintln!("dropped a service");
-        // There is a bug here. In tonic? In tokio?
-        //   https://github.com/baloo/tonic-drop/blob/main/src/main.rs#L15
-        //   this is an reproduction I submitted upstream.
         let mut context = match self.context.lock() {
             Ok(guard) => guard,
             Err(_) => return, // can't do much
         };
 
         context
-            .tr_close(&mut ObjectHandle::from(self.ak_key_handle.value()))
+            .flush_context(ObjectHandle::from(self.ak_key_handle.value()))
             .expect("unable to release the Attestation Key");
         context
-            .tr_close(&mut ObjectHandle::from(self.ek_key_handle.value()))
+            .flush_context(ObjectHandle::from(self.ek_key_handle.value()))
             .expect("unable to release the Endorsement Key");
     }
 }

@@ -1,5 +1,25 @@
 use clap::{App, Arg};
 use pcr_eventlog_attestation::{server::server, VERSION};
+use tokio::signal::unix::{signal, SignalKind};
+
+pub async fn signal_exit() -> std::io::Result<()> {
+    // SIGHUP
+    let mut hup = signal(SignalKind::hangup())?;
+    // SIGTERM
+    let mut term = signal(SignalKind::terminate())?;
+    // SIGINT = ctrl_c
+    let mut int = signal(SignalKind::interrupt())?;
+
+    tokio::select! {
+        _ = hup.recv() => {
+        },
+        _ = term.recv() => {
+        },
+        _ = int.recv() => {
+        },
+    }
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -39,9 +59,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let eventlog = matches.value_of("eventlog").unwrap();
     let imageid = matches.value_of("image-id").unwrap();
 
-    server(listen, eventlog, imageid).await.map_err(|e| {
-        eprintln!("error: {}", e);
-        e
-    })?;
+    tokio::select! {
+        _ = server(listen, eventlog, imageid) => {
+        },
+        _ = signal_exit() => {
+        },
+    }
+
     Ok(())
 }
