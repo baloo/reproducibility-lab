@@ -211,7 +211,7 @@ pub fn recompute(log: Vec<Event>) -> (Vec<u8>, Vec<u8>) {
         .iter()
         .filter(|e| e.pcr_index == 4 && e.event_type != EventType::NoAction)
     {
-        if i.event_type == EventType::EFIBootServicesApplication && i.num == 32 {
+        if i.event_type == EventType::EFIBootServicesApplication {
             for h in i.digests.iter() {
                 match h {
                     Digest::Sha256(ref v) => {

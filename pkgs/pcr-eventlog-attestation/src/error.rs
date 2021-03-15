@@ -95,4 +95,5 @@ pub enum ValidationError {
     EndorsementKeyMismatch,
     CertificationChainBroken,
     ProofMismatch,
+    ImageChecksumMismatch,
 }

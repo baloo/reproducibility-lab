@@ -34,7 +34,7 @@ in rustPlatform.buildRustPackage rec {
 
   RUST_BACKTRACE = 1;
 
-  cargoSha256 = "sha256-sRM3++poqAXQO9viOlbEeFK0E7K9hoeX6Vz/BPNiY5w=";
+  cargoSha256 = "sha256-87dMEk36qmpqpbIPMcB+9dD1fmrg4CCk7bxk8MI+bm8=";
 
   # TODO: wip, until I fix my tests
   doCheck = false;

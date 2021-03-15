@@ -382,9 +382,25 @@ dependencies = [
 
 [[package]]
 name = "hex"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "805026a5d0141ffc30abb3be3173848ad46a1b1664fe632428479619a3644d77"
+
+[[package]]
+name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "hex-serde"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3486d7bc9e52c4c5fc1856ae8a5e4ab41d2499fc20bbc44492e244e8bf1b7012"
+dependencies = [
+ "hex 0.3.2",
+ "serde",
+]
 
 [[package]]
 name = "hostname-validator"
@@ -711,7 +727,8 @@ name = "pcr_eventlog_attestation"
 version = "0.1.0"
 dependencies = [
  "clap",
- "hex",
+ "hex 0.4.3",
+ "hex-serde",
  "lazy_static",
  "nom",
  "openssl",
@@ -720,6 +737,7 @@ dependencies = [
  "serde",
  "serde_cbor",
  "serde_derive",
+ "serde_json",
  "sha2",
  "tokio",
  "tonic",
@@ -1007,6 +1025,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_json"
+version = "1.0.64"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "799e97dc9fdae36a5c8b8f2cae9ce2ee9fdce2058c57a93e6099d919fd982f79"
+dependencies = [
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]

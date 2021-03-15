@@ -1,4 +1,4 @@
-use std::{fs, path::Path};
+use std::{fs, path::Path, path::PathBuf, process::Command};
 
 use openssl::{
     pkey::{PKey, Public},
@@ -10,6 +10,7 @@ use openssl::{
     },
 };
 use rand::{thread_rng, Rng};
+use serde::Deserialize;
 use serde_cbor::from_slice;
 use tss_esapi::{interface_types::algorithm::HashingAlgorithm::Sha256, utils::AsymSchemeUnion};
 
@@ -24,6 +25,16 @@ use crate::{
     },
     verifier::verification::verify_quote,
 };
+
+#[derive(Deserialize)]
+struct ChecksumManifest {
+    #[serde(with = "hex_serde")]
+    sha1: Vec<u8>,
+    #[serde(with = "hex_serde")]
+    sha256: Vec<u8>,
+    #[serde(with = "hex_serde")]
+    sha512: Vec<u8>,
+}
 
 pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Error> {
     // Build a certificate verification store, used to ensure the TPM's certificates are trusted
@@ -96,6 +107,32 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
     } else {
         println!("quote match eventlog: ✔️");
     }
+
+    // Compare image checksum
+    let evaluation = format!(
+        "with import (builtins.fetchTarball \"{}/archive/{}.tar.gz\") {{}}; http-image(\"{}\")",
+        "https://github.com/baloo/reproducibility-lab/", &response.image_id, &response.image_id
+    );
+    let command = Command::new("nix-build")
+        .args(&["-E", &evaluation])
+        .output()
+        .expect("unable to evaluate image");
+    let image_path = command.stdout;
+    let image_path = std::str::from_utf8(&image_path[..image_path.len() - 1]).unwrap();
+    let image_path = PathBuf::from(image_path);
+    let mut checksum_file = image_path.clone();
+    checksum_file.push("checksum.json");
+    let checksum_data = std::fs::read(checksum_file).unwrap();
+    let checksum: ChecksumManifest = serde_json::from_slice(&checksum_data).unwrap();
+
+    if &checksum.sha256[..] == &image_checksum[..] {
+        println!("image checksum match: ✔️");
+    } else {
+        errors.push(ValidationError::ImageChecksumMismatch);
+    }
+    println!("image_path {:?}", image_path);
+    println!("instore checksum: {}", hex::encode(&checksum.sha256));
+    println!("image_checksum {}", hex::encode(image_checksum));
 
     // Ensure we got a chain from root CA to ek
     let endorsement_key_cert =

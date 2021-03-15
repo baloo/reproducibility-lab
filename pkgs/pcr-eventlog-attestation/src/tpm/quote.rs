@@ -21,9 +21,7 @@ struct Name;
 
 impl Name {
     fn read(input: &[u8]) -> IResult<&[u8], &[u8]> {
-        println!("baloo input={:x?}", input);
         let (i, size) = be_u16(input)?;
-        println!("baloo size={}", size);
         let (i, name) = take(size as usize)(i)?;
 
         Ok((i, name))
