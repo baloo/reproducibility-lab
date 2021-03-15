@@ -195,7 +195,7 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
     if response.get_ref().proof != secret.as_bytes() {
         errors.push(ValidationError::ProofMismatch);
     } else {
-        println!("server replied with proof of secret: ✔️");
+        println!("server replied with proof of knowledge: ✔️");
     }
 
     if errors.len() == 0 {
