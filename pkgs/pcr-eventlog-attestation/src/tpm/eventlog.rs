@@ -215,6 +215,9 @@ pub fn recompute(log: Vec<Event>) -> (Vec<u8>, Vec<u8>) {
             for h in i.digests.iter() {
                 match h {
                     Digest::Sha256(ref v) => {
+                        // TODO: we should check this is this the last element. target image should
+                        // be the last one before handing things to linux.
+                        // see https://github.com/google/go-attestation/blob/master/docs/event-log-disclosure.md
                         image_checksum.copy_from_slice(&v[..]);
                     }
                     _ => {}
