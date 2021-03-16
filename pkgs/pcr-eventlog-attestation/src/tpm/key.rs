@@ -362,15 +362,37 @@ impl TpmPublic {
     }
 }
 
+impl Default for TpmPublic {
+    fn default() -> Self {
+        Self(TPM2B_PUBLIC::default())
+    }
+}
+
 impl From<TPM2B_PUBLIC> for TpmPublic {
     fn from(t: TPM2B_PUBLIC) -> Self {
         Self(t)
     }
 }
+
+/// Provide an implementation to convert from a TPM2B_PUBLIC slice to TpmPublic
 impl TryFrom<&[u8]> for TpmPublic {
     type Error = Error;
-    fn try_from(_s: &[u8]) -> Result<Self, Self::Error> {
-        unimplemented!("TpmPublic::try_from(&[u8])");
+    fn try_from(s: &[u8]) -> Result<Self, Self::Error> {
+        let mut out = TpmPublic::default();
+        let mut offset = 0;
+
+        let rc = unsafe {
+            Tss2_MU_TPM2B_PUBLIC_Unmarshal(s.as_ptr(), s.len() as size_t, &mut offset, &mut out.0)
+        };
+        if rc != 0 {
+            return Err(Error::PreconditionFailed);
+        }
+        if offset != s.len() as size_t {
+            // Extra data in the slice, this is not expected
+            return Err(Error::PreconditionFailed);
+        }
+
+        Ok(out)
     }
 }
 

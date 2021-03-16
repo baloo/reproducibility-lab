@@ -36,9 +36,6 @@ in rustPlatform.buildRustPackage rec {
 
   cargoSha256 = "sha256-87dMEk36qmpqpbIPMcB+9dD1fmrg4CCk7bxk8MI+bm8=";
 
-  # TODO: wip, until I fix my tests
-  doCheck = false;
-
   meta = with lib; {
     description = "A remote attestation protocol implementation checking for PCR";
     homepage = "https://github.com/baloo/build-reproducibility";
