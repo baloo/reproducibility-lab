@@ -224,12 +224,12 @@ pub fn recompute(log: Vec<Event>) -> (Vec<u8>, Vec<u8>) {
                 }
             }
         }
-        hasher.write(&value[..]).expect("unable to write hash");
+        hasher.write_all(&value[..]).expect("unable to write hash");
         for h in i.digests.iter() {
             match h {
                 Digest::Sha256(ref v) => {
                     //println!("pcrs = {:#02x?}", v);
-                    hasher.write(&v[..]).expect("unable to write hash");
+                    hasher.write_all(&v[..]).expect("unable to write hash");
                 }
                 _ => {}
             }

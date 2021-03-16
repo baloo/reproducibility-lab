@@ -324,15 +324,15 @@ impl TpmPublic {
 
         // TODO: read the hash type from the TPM2B_PUBLIC itself
         let mut hasher = Sha256::new();
-        hasher.write(&buf).expect("unable to write hash");
+        hasher.write_all(&buf).expect("unable to write hash");
         let hash = hasher.finalize_reset();
 
         let out = Vec::with_capacity(2 + hash.len());
         let mut out = Cursor::new(out);
 
         // TODO: get the proper hash alg, this is the sha256 value hardcoded
-        out.write(&[0x00, 0x0b])?;
-        out.write(&hash)?;
+        out.write_all(&[0x00, 0x0b])?;
+        out.write_all(&hash)?;
 
         Ok(out.into_inner())
     }

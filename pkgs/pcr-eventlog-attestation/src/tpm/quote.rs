@@ -182,7 +182,7 @@ impl Quote {
     pub fn compare_sha256(&self, pcr4: &[u8]) -> bool {
         let mut hasher = Sha256::new();
         // For each selected pcr, blablabla
-        hasher.write(pcr4).expect("unable to write hash");
+        hasher.write_all(pcr4).expect("unable to write hash");
         let expected_hash = hasher.finalize_reset();
 
         &expected_hash[..] == &self.attested.digest[..]
