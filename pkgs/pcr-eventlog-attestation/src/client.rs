@@ -108,6 +108,7 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
     }
 
     // Compare image checksum
+    // TODO: get a proper URI builder, and pass that uri as parameter
     let evaluation = format!(
         "with import (builtins.fetchTarball \"{}/archive/{}.tar.gz\") {{}}; http-image(\"{}\")",
         "https://github.com/baloo/reproducibility-lab/", &response.image_id, &response.image_id
