@@ -28,10 +28,12 @@ use crate::{
 
 #[derive(Deserialize)]
 struct ChecksumManifest {
+    #[allow(unused)]
     #[serde(with = "hex_serde")]
     sha1: Vec<u8>,
     #[serde(with = "hex_serde")]
     sha256: Vec<u8>,
+    #[allow(unused)]
     #[serde(with = "hex_serde")]
     sha512: Vec<u8>,
 }
