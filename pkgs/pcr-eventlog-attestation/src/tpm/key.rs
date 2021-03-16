@@ -330,6 +330,7 @@ impl TpmPublic {
         let out = Vec::with_capacity(2 + hash.len());
         let mut out = Cursor::new(out);
 
+        // name = uint16(hash_alg) + hash
         // TODO: get the proper hash alg, this is the sha256 value hardcoded
         out.write_all(&[0x00, 0x0b])?;
         out.write_all(&hash)?;
