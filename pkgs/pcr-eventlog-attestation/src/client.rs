@@ -205,6 +205,7 @@ pub async fn verifier<P: AsRef<Path>>(
     };
     let response = client.auth(request).await?;
 
+    // For now, just reply with the secret in cleartext, but a simple hmac would do just the same.
     if response.get_ref().proof != secret.as_bytes() {
         errors.push(ValidationError::ProofMismatch);
     } else {
@@ -213,6 +214,11 @@ pub async fn verifier<P: AsRef<Path>>(
 
     if errors.len() == 0 {
         println!("server authenticated: ✔️");
+    } else {
+        println!("validation errors:");
+        for e in errors.iter() {
+            println!("  {}", e);
+        }
     }
 
     Ok(())

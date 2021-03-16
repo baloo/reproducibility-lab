@@ -97,3 +97,25 @@ pub enum ValidationError {
     ProofMismatch,
     ImageChecksumMismatch,
 }
+
+impl Display for ValidationError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ValidationError::*;
+        match self {
+            NonceMismatch { expected, received } => write!(
+                f,
+                "Validation Error: Nonce mismatch. expected {}, received {}",
+                hex::encode(expected),
+                hex::encode(received)
+            ),
+            UnexpectedPCR => write!(f, "Validation Error: PCR in quote does not match eventlog"),
+            EndorsementKeyMismatch => write!(
+                f,
+                "Validation Error: Endorsement key does not match Endorsement certificate"
+            ),
+            CertificationChainBroken => write!(f, "Validation Error: Could not validate Endorsement certificated against a known root certificate"),
+            ProofMismatch => write!(f, "Validation Error: Attestor could not prove possession of the secret"),
+            ImageChecksumMismatch => write!(f, "Validation Error: Image checksum mismatch. The image could not be rebuilt from reference repository"),
+        }
+    }
+}
