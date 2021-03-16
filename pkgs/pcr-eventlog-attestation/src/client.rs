@@ -101,10 +101,7 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
     let (image_checksum, pcr) = recompute(out);
 
     // Then compare to the value in the quote
-    if !quote.compare_sha256(&pcr) && false
-    // TODO: check disabled for dev (I cant reset the tpm (using the swtpm control channel
-    //       maybe?))
-    {
+    if !quote.compare_sha256(&pcr) {
         errors.push(ValidationError::UnexpectedPCR);
     } else {
         println!("quote match eventlog: ✔️");
