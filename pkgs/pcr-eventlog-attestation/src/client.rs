@@ -13,6 +13,7 @@ use rand::{thread_rng, Rng};
 use serde::Deserialize;
 use serde_cbor::from_slice;
 use tss_esapi::{interface_types::algorithm::HashingAlgorithm::Sha256, utils::AsymSchemeUnion};
+use url::Url;
 
 use crate::{
     error::{Error, ValidationError},
@@ -38,7 +39,11 @@ struct ChecksumManifest {
     sha512: Vec<u8>,
 }
 
-pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Error> {
+pub async fn verifier<P: AsRef<Path>>(
+    server: &str,
+    ca_path: P,
+    repository: &str,
+) -> Result<(), Error> {
     // Build a certificate verification store, used to ensure the TPM's certificates are trusted
     // and legit.
     let store = {
@@ -108,10 +113,17 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
     }
 
     // Compare image checksum
-    // TODO: get a proper URI builder, and pass that uri as parameter
+    let mut repository_url = Url::parse(repository).unwrap();
+    repository_url
+        .path_segments_mut()
+        .unwrap()
+        .push("archive")
+        .push(&format!("{}.tar.gz", &response.image_id));
+    println!("reference repository: {}", repository_url.as_str());
     let evaluation = format!(
-        "with import (builtins.fetchTarball \"{}/archive/{}.tar.gz\") {{}}; http-image(\"{}\")",
-        "https://github.com/baloo/reproducibility-lab/", &response.image_id, &response.image_id
+        "with import (builtins.fetchTarball \"{}\") {{}}; http-image(\"{}\")",
+        repository_url.as_str(),
+        &response.image_id
     );
     let command = Command::new("nix-build")
         .args(&["-E", &evaluation])
@@ -120,6 +132,11 @@ pub async fn verifier<P: AsRef<Path>>(server: &str, ca_path: P) -> Result<(), Er
     let image_path = command.stdout;
     let image_path = std::str::from_utf8(&image_path[..image_path.len() - 1]).unwrap();
     let image_path = PathBuf::from(image_path);
+    println!("reference image: {}", image_path.to_str().unwrap());
+    println!(
+        "audit with: nix-store --query --tree {}",
+        image_path.to_str().unwrap()
+    );
     let mut checksum_file = image_path.clone();
     checksum_file.push("checksum.json");
     let checksum_data = std::fs::read(checksum_file).unwrap();

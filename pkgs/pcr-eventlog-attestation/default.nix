@@ -34,7 +34,7 @@ in rustPlatform.buildRustPackage rec {
 
   RUST_BACKTRACE = 1;
 
-  cargoSha256 = "sha256-87dMEk36qmpqpbIPMcB+9dD1fmrg4CCk7bxk8MI+bm8=";
+  cargoSha256 = "sha256-tzn7T25zCIULsyqbHNPLApJEWONsz4sW/UFd6as7lNg=";
 
   meta = with lib; {
     description = "A remote attestation protocol implementation checking for PCR";

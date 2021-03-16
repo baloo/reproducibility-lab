@@ -16,6 +16,15 @@ async fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("repository")
+                .short("r")
+                .long("reference-repository")
+                .value_name("URL")
+                .help("The url to the repository with image definition")
+                .required(true)
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("capath")
                 .short("c")
                 .long("capath")
@@ -28,8 +37,9 @@ async fn main() {
 
     let server = matches.value_of("server").unwrap();
     let capath = matches.value_of("capath").unwrap();
+    let repository = matches.value_of("repository").unwrap();
 
-    let _ = verifier(server, capath).await.map_err(|e| {
+    let _ = verifier(server, capath, repository).await.map_err(|e| {
         eprintln!("error: {}", e);
         e
     });
