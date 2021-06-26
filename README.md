@@ -7,11 +7,7 @@ What you'll find here is a prototype of a usecase for build-reproducibility. Thi
 How to answer that question:
   - [ ] Get your build reproducible.
 
-    Are we there yet? no, but close. https://r13y.com
-
-    The last two outstanding issues are being worked on:
-      - https://github.com/NixOS/nixpkgs/pull/107965
-      - https://github.com/NixOS/nixpkgs/pull/112928
+    Are we there yet? Yes, for a minimal image: https://r13y.com
 
   - [x] Get a PE/COFF checksum of the built image
     ![checksum](doc/images/checksum.png)
